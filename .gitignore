@@ -1,0 +1,3 @@
+bin/driver-go-gestic
+.gopath/*
+pkg/
