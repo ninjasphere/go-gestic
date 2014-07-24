@@ -4,11 +4,46 @@ import (
 	"log"
 	"os"
 	"syscall"
+
+	"github.com/joshlf13/gopack"
 )
 
+// Gestic device path
 const GESTIC_DEV = "/dev/gestic"
 
+// Flag which indicates if the payload contains data
+const ID_SENSOR_DATA_OUTPUT = 0x91
+
 type Reader struct {
+}
+
+type Header struct {
+	Length, Flags, Seq, Id uint8
+}
+
+type DateHeader struct {
+	DataMask              uint16
+	TimeStamp, SystemInfo uint8
+}
+
+var Gestures = []string{
+	"No gesture",
+	"Garbage model",
+	"Flick West to East",
+	"Flick East to West",
+	"Flick South to North",
+	"Flick North to South",
+	"Circle clockwise",
+	"Circle counter-clockwise",
+}
+
+type GestureInfo struct {
+	Gesture uint32
+}
+
+func (gi *GestureInfo) GetGestureName() string {
+	gest := gi.Gesture & 0xff
+	return Gestures[int(gest)]
 }
 
 func (r *Reader) Start() {
@@ -42,6 +77,46 @@ func (r *Reader) Start() {
 
 			buf := make([]byte, 255)
 			n, err := syscall.Read(fd, buf)
+
+			header := &Header{}
+			dataHeader := &DateHeader{}
+			//gestureInfo := &GestureInfo{}
+
+			gopack.Unpack(buf[:4], header)
+			payload := buf[4:]
+
+			log.Printf("header %v", header)
+
+			if header.Id == ID_SENSOR_DATA_OUTPUT {
+				gopack.Unpack(payload[:4], dataHeader)
+
+				log.Printf("dataOutputConfig 1 %d", dataHeader.DataMask)
+
+				payload = payload[4:]
+
+				log.Printf("dataHeader %v", dataHeader)
+
+				// if dataHeader.DataOutputConfigMask&1 != 0 {
+				// 	//contains DSPInfo, ignore
+				// 	rest = rest[2:]
+				// }
+				//
+				// if dataHeader.DataOutputConfigMask&2 != 0 {
+				// 	// contains GestureInfo
+				// 	//(GestureInfo,) = struct.unpack( 'I', rest[:4])
+				// 	gopack.Unpack(rest[:4], gestureInfo)
+				//
+				// 	log.Printf("gesture %s", gestureInfo.GetGestureName())
+				// 	rest = rest[2:]
+				// }
+			}
+
+			// if the msgid == CONST  we have data
+
+			// 		data = SensorDataOutputHeader( *struct.unpack( 'HBB', payload[:4] ) )
+
+			//	unsigned short and two bytes
+			// namedtuple('SensorDataOutput', ['DataOutputConfigMask', 'TimeStamp', 'SystemInfo'])
 
 			if err != nil {
 				log.Fatalf("Can't read %s - %s", GESTIC_DEV, err)
