@@ -5,8 +5,8 @@ import (
 	"os/signal"
 
 	"github.com/mitchellh/cli"
-	"github.com/ninjablocks/driver-go-gestic/command"
-	"github.com/ninjablocks/driver-go-gestic/command/agent"
+	"github.com/ninjasphere/driver-go-gestic/command"
+	"github.com/ninjasphere/driver-go-gestic/command/agent"
 )
 
 // Commands is the mapping of all the available Serf commands.

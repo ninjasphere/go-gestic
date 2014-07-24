@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -e
 
-OWNER=ninjablocks
-BIN_NAME=mqtt-bridgeify
-PROJECT_NAME=mqtt-bridgeify
+OWNER=ninjasphere
+BIN_NAME=driver-go-gestic
+PROJECT_NAME=driver-go-gestic
 
 # Get the parent directory of where this script is.
 SOURCE="${BASH_SOURCE[0]}"
@@ -27,5 +27,4 @@ export GOPATH="$(pwd)/.gopath"
 # move the working path and build
 cd .gopath/src/github.com/${OWNER}/${PROJECT_NAME}
 go get -d -v ./...
-go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -o ${BIN_NAME}
-mv ${BIN_NAME} ./bin
+go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -o ./bin/${BIN_NAME}
