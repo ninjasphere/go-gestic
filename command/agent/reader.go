@@ -26,6 +26,25 @@ type DateHeader struct {
 	TimeStamp, SystemInfo uint8
 }
 
+type DSPInfo struct {
+	Info uint32
+}
+
+type GestureInfo struct {
+	Gesture uint32
+}
+
+type AirWheelInfo struct {
+	AirWheel uint8
+	Crap     uint8
+}
+
+type CoordinateInfo struct {
+	X uint8
+	Y uint8
+	Z uint8
+}
+
 var Gestures = []string{
 	"No gesture",
 	"Garbage model",
@@ -52,7 +71,7 @@ func (r *Reader) Start() {
 	fd, err := syscall.Open(GESTIC_DEV, os.O_RDWR, 0666)
 
 	rfds := &syscall.FdSet{}
-	timeout := &syscall.Timeval{}
+	timeout := &syscall.Timeval{1, 1}
 
 	if err != nil {
 		log.Fatalf("Can't open %s - %s", GESTIC_DEV, err)

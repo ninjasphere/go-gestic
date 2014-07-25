@@ -1,3 +1,4 @@
+GOPATH=$(shell pwd)/.gopath
 
 all:
 	scripts/build.sh
@@ -10,7 +11,8 @@ clean:
 	rm -rf .gopath || true
 
 test:
-	go test -v ./...
+	cd .gopath/src/github.com/ninjasphere/driver-go-gestic && go get -t ./...
+	cd .gopath/src/github.com/ninjasphere/driver-go-gestic && go test ./...
 
 vet:
 	go vet ./...
