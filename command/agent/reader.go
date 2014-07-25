@@ -8,6 +8,18 @@ import (
 	"github.com/joshlf13/gopack"
 )
 
+const (
+	BIT_ONE     uint16 = 1
+	BIT_TWO     uint16 = 2
+	BIT_FOUR    uint16 = 4
+	BIT_EIGHT   uint16 = 8
+	BIT_SIXTEEN uint16 = 16
+)
+
+// Gestic
+// http://ww1.microchip.com/downloads/en/DeviceDoc/40001718B.pdf
+// Page 36
+
 // Gestic device path
 const GESTIC_DEV = "/dev/gestic"
 
@@ -27,11 +39,15 @@ type DateHeader struct {
 }
 
 type DSPInfo struct {
-	Info uint32
+	Info uint16
 }
 
 type GestureInfo struct {
 	Gesture uint32
+}
+
+type TouchInfo struct {
+	Touch uint32
 }
 
 type AirWheelInfo struct {
@@ -54,10 +70,6 @@ var Gestures = []string{
 	"Flick North to South",
 	"Circle clockwise",
 	"Circle counter-clockwise",
-}
-
-type GestureInfo struct {
-	Gesture uint32
 }
 
 func (gi *GestureInfo) GetGestureName() string {
@@ -98,44 +110,80 @@ func (r *Reader) Start() {
 			n, err := syscall.Read(fd, buf)
 
 			header := &Header{}
-			dataHeader := &DateHeader{}
-			//gestureInfo := &GestureInfo{}
 
 			gopack.Unpack(buf[:4], header)
-			payload := buf[4:]
 
-			log.Printf("header %v", header)
+			log.Printf("header %+v", header)
 
-			if header.Id == ID_SENSOR_DATA_OUTPUT {
-				gopack.Unpack(payload[:4], dataHeader)
+			dataHeader := &DateHeader{}
 
-				log.Printf("dataOutputConfig 1 %d", dataHeader.DataMask)
+			gopack.Unpack(buf[4:8], dataHeader)
 
-				payload = payload[4:]
+			log.Printf("dataHeader %+v", dataHeader)
 
-				log.Printf("dataHeader %v", dataHeader)
+			// var for offset
+			offset := 8
 
-				// if dataHeader.DataOutputConfigMask&1 != 0 {
-				// 	//contains DSPInfo, ignore
-				// 	rest = rest[2:]
-				// }
-				//
-				// if dataHeader.DataOutputConfigMask&2 != 0 {
-				// 	// contains GestureInfo
-				// 	//(GestureInfo,) = struct.unpack( 'I', rest[:4])
-				// 	gopack.Unpack(rest[:4], gestureInfo)
-				//
-				// 	log.Printf("gesture %s", gestureInfo.GetGestureName())
-				// 	rest = rest[2:]
-				// }
+			// grab the DSPIfo
+			if dataHeader.DataMask&BIT_ONE == BIT_ONE {
+
+				dspinfo := &DSPInfo{}
+
+				gopack.Unpack(buf[offset:offset+2], dspinfo)
+
+				log.Printf("dspinfo %+v", dspinfo)
+
+				offset += 2
 			}
 
-			// if the msgid == CONST  we have data
+			// grab the GestureInfo
+			if dataHeader.DataMask&BIT_TWO == BIT_TWO {
 
-			// 		data = SensorDataOutputHeader( *struct.unpack( 'HBB', payload[:4] ) )
+				gestureInfo := &GestureInfo{}
 
-			//	unsigned short and two bytes
-			// namedtuple('SensorDataOutput', ['DataOutputConfigMask', 'TimeStamp', 'SystemInfo'])
+				gopack.Unpack(buf[offset:offset+4], gestureInfo)
+
+				log.Printf("gesture %d", gestureInfo.Gesture&0xff)
+
+				offset += 4
+
+			}
+
+			// grab the TouchInfo
+			if dataHeader.DataMask&BIT_FOUR == BIT_FOUR {
+
+				touchInfo := &TouchInfo{}
+
+				gopack.Unpack(buf[offset:offset+4], touchInfo)
+
+				log.Printf("touchInfo %v", touchInfo)
+
+				offset += 4
+			}
+
+			// grab the AirWheelInfo
+			if dataHeader.DataMask&BIT_EIGHT == BIT_EIGHT {
+
+				airWheelInfo := &AirWheelInfo{}
+
+				gopack.Unpack(buf[offset:offset+2], airWheelInfo)
+
+				log.Printf("airWheelInfo %v", airWheelInfo)
+
+				offset += 2
+			}
+
+			// grab the CoordinateInfo
+			if dataHeader.DataMask&BIT_SIXTEEN == BIT_SIXTEEN {
+
+				coordinateInfo := &CoordinateInfo{}
+
+				gopack.Unpack(buf[offset:offset+6], coordinateInfo)
+
+				log.Printf("coordinateInfo %v", coordinateInfo)
+
+				offset += 6
+			}
 
 			if err != nil {
 				log.Fatalf("Can't read %s - %s", GESTIC_DEV, err)
