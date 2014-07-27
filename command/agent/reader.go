@@ -9,11 +9,11 @@ import (
 )
 
 const (
-	BIT_ONE     uint16 = 1
-	BIT_TWO     uint16 = 2
-	BIT_FOUR    uint16 = 4
-	BIT_EIGHT   uint16 = 8
-	BIT_SIXTEEN uint16 = 16
+	DSPIfoFlag         uint16 = 1
+	GestureInfoFlag    uint16 = 2
+	TouchInfoFlag      uint16 = 4
+	AirWheelInfoFlag   uint16 = 8
+	CoordinateInfoFlag uint16 = 16
 )
 
 // Gestic
@@ -21,25 +21,39 @@ const (
 // Page 36
 
 // Gestic device path
-const GESTIC_DEV = "/dev/gestic"
+const GesticDevicePath = "/dev/gestic"
 
 // Flag which indicates if the payload contains data
-const ID_SENSOR_DATA_OUTPUT = 0x91
+const SensorDataPresentFlag = 0x91
+
+const (
+	MaxEpollEvents     = 32	
+	MaxMessageSize     = 255
+	IdSensorDataOutput = 0x91
+)
 
 type Reader struct {
 }
 
-type Header struct {
+type GestureCoordinates struct {
+	X, Y, Z int
+}
+
+// decoded gesture
+type Gesture struct {
+	Gesture     *string
+	Touch       *string
+	AirWheel    *int
+	Coordinates *GestureCoordinates
+}
+
+type EventHeader struct {
 	Length, Flags, Seq, Id uint8
 }
 
-type DateHeader struct {
+type DataHeader struct {
 	DataMask              uint16
 	TimeStamp, SystemInfo uint8
-}
-
-type DSPInfo struct {
-	Info uint16
 }
 
 type GestureInfo struct {
@@ -72,26 +86,27 @@ var Gestures = []string{
 	"Circle counter-clockwise",
 }
 
+var ClickLocations = []{
+
+}
+
 func (gi *GestureInfo) GetGestureName() string {
-	gest := gi.Gesture & 0xff
-	return Gestures[int(gest)]
+	return Gestures[int(gi.Gesture)]
 }
 
 func (r *Reader) Start() {
-	log.Printf("Opening %s", GESTIC_DEV)
+	log.Printf("Opening %s", GesticDevicePath)
 
-	fd, err := syscall.Open(GESTIC_DEV, os.O_RDWR, 0666)
+	fd, err := syscall.Open(GesticDevicePath, os.O_RDWR, 0666)
 
 	rfds := &syscall.FdSet{}
 	timeout := &syscall.Timeval{1, 1}
 
 	if err != nil {
-		log.Fatalf("Can't open %s - %s", GESTIC_DEV, err)
+		log.Fatalf("Can't open %s - %s", GesticDevicePath, err)
 	}
 
-	log.Printf("Reading %s", GESTIC_DEV)
-
-	//	ping_at := time.Now()
+	log.Printf("Reading %s", GesticDevicePath)
 
 	for {
 
@@ -101,7 +116,7 @@ func (r *Reader) Start() {
 		_, err := syscall.Select(fd+1, rfds, nil, nil, timeout)
 
 		if err != nil {
-			log.Fatalf("Can't read %s - %s", GESTIC_DEV, err)
+			log.Fatalf("Can't read %s - %s", GesticDevicePath, err)
 		}
 		//  One of the fds changed
 		if FD_ISSET(rfds, int(fd)) {
@@ -109,93 +124,92 @@ func (r *Reader) Start() {
 			buf := make([]byte, 255)
 			n, err := syscall.Read(fd, buf)
 
-			header := &Header{}
 
-			gopack.Unpack(buf[:4], header)
-
-			log.Printf("header %+v", header)
-
-			dataHeader := &DateHeader{}
-
-			gopack.Unpack(buf[4:8], dataHeader)
-
-			log.Printf("dataHeader %+v", dataHeader)
-
-			// var for offset
-			offset := 8
-
-			// grab the DSPIfo
-			if dataHeader.DataMask&BIT_ONE == BIT_ONE {
-
-				dspinfo := &DSPInfo{}
-
-				gopack.Unpack(buf[offset:offset+2], dspinfo)
-
-				log.Printf("dspinfo %+v", dspinfo)
-
-				offset += 2
-			}
-
-			// grab the GestureInfo
-			if dataHeader.DataMask&BIT_TWO == BIT_TWO {
-
-				gestureInfo := &GestureInfo{}
-
-				gopack.Unpack(buf[offset:offset+4], gestureInfo)
-
-				log.Printf("gesture %d", gestureInfo.Gesture&0xff)
-
-				offset += 4
-
-			}
-
-			// grab the TouchInfo
-			if dataHeader.DataMask&BIT_FOUR == BIT_FOUR {
-
-				touchInfo := &TouchInfo{}
-
-				gopack.Unpack(buf[offset:offset+4], touchInfo)
-
-				log.Printf("touchInfo %v", touchInfo)
-
-				offset += 4
-			}
-
-			// grab the AirWheelInfo
-			if dataHeader.DataMask&BIT_EIGHT == BIT_EIGHT {
-
-				airWheelInfo := &AirWheelInfo{}
-
-				gopack.Unpack(buf[offset:offset+2], airWheelInfo)
-
-				log.Printf("airWheelInfo %v", airWheelInfo)
-
-				offset += 2
-			}
-
-			// grab the CoordinateInfo
-			if dataHeader.DataMask&BIT_SIXTEEN == BIT_SIXTEEN {
-
-				coordinateInfo := &CoordinateInfo{}
-
-				gopack.Unpack(buf[offset:offset+6], coordinateInfo)
-
-				log.Printf("coordinateInfo %v", coordinateInfo)
-
-				offset += 6
-			}
-
-			if err != nil {
-				log.Fatalf("Can't read %s - %s", GESTIC_DEV, err)
-			}
-
-			if n > 0 {
-				log.Printf("read %x", buf[:n])
-			}
+			BuildGestureEvent(buf)
 		}
 
 	}
 
+}
+
+func BuildGestureEvent(buf []byte) Gesture {
+
+	header := &Header{}
+
+	gopack.Unpack(buf[:4], header)
+
+	//log.Printf("header %+v", header)
+
+	dataHeader := &DateHeader{}
+
+	gopack.Unpack(buf[4:8], dataHeader)
+
+	//log.Printf("dataHeader %+v", dataHeader)
+
+	// var for offset
+	offset := 8
+
+	// grab the DSPIfo
+	if dataHeader.DataMask&DSPIfoFlag == DSPIfoFlag {
+		offset += 2
+	}
+
+	// grab the GestureInfo
+	if dataHeader.DataMask&GestureInfoFlag == GestureInfoFlag {
+
+		gestureInfo := &GestureInfo{}
+
+		gopack.Unpack(buf[offset:offset+4], gestureInfo)
+
+		//log.Printf("gesture %d", gestureInfo.Gesture&0xff)
+
+		offset += 4
+
+	}
+
+	// grab the TouchInfo
+	if dataHeader.DataMask&TouchInfoFlag == TouchInfoFlag {
+
+		touchInfo := &TouchInfo{}
+
+		gopack.Unpack(buf[offset:offset+4], touchInfo)
+
+		//log.Printf("touchInfo %v", touchInfo)
+
+		offset += 4
+	}
+
+	// grab the AirWheelInfo
+	if dataHeader.DataMask&AirWheelInfoFlag == AirWheelInfoFlag {
+
+		airWheelInfo := &AirWheelInfo{}
+
+		gopack.Unpack(buf[offset:offset+2], airWheelInfo)
+
+		log.Printf("airWheelInfo %v", airWheelInfo)
+
+		offset += 2
+	}
+
+	// grab the CoordinateInfo
+	if dataHeader.DataMask&CoordinateInfoFlag == CoordinateInfoFlag {
+
+		coordinateInfo := &CoordinateInfo{}
+
+		gopack.Unpack(buf[offset:offset+6], coordinateInfo)
+
+		//log.Printf("coordinateInfo %v", coordinateInfo)
+
+		offset += 6
+	}
+
+	if err != nil {
+		log.Fatalf("Can't read %s - %s", GesticDevicePath, err)
+	}
+
+	if n > 0 {
+		log.Printf("read %x", buf[:n])
+	}
 }
 
 func FD_SET(p *syscall.FdSet, i int) {
