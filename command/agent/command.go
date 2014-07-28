@@ -10,6 +10,7 @@ import (
 
 	"github.com/juju/loggo"
 	"github.com/mitchellh/cli"
+	"github.com/ninjasphere/go-ninja"
 )
 
 type Command struct {
@@ -77,6 +78,26 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// main logic here
+	conn, err := ninja.Connect("com.ninjablocks.gestic")
+
+	if err != nil {
+		c.logger.Errorf("Connect failed: %v", err)
+		return 1
+	}
+
+	pwd, err := os.Getwd()
+
+	if err != nil {
+		c.logger.Errorf("Connect failed: %v", err)
+		return 1
+	}
+
+	bus, err := conn.AnnounceDriver("com.ninjablocks.gestic", "driver-gestic", pwd)
+	if err != nil {
+		c.logger.Errorf("Could not get driver bus: %v", err)
+		return 1
+	}
+
 	reader := &Reader{}
 
 	go reader.Start()

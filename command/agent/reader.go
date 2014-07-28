@@ -3,7 +3,6 @@ package agent
 import (
 	"log"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/joshlf13/gopack"
 	"github.com/wolfeidau/epoller"
 )
@@ -27,8 +26,6 @@ const GesticDevicePath = "/dev/gestic"
 const SensorDataPresentFlag = 0x91
 
 const (
-	MaxEpollEvents     = 32
-	MaxMessageSize     = 255
 	IdSensorDataOutput = 0x91
 )
 
@@ -37,12 +34,23 @@ type Reader struct {
 }
 
 type gestureData struct {
-	Event       EventHeader
-	Data        DataHeader
-	Gesture     GestureInfo
-	Touch       TouchInfo
-	AirWheel    AirWheelInfo
-	Coordinates CoordinateInfo
+	Event       *EventHeader
+	DataHeader  *DataHeader
+	Gesture     *GestureInfo
+	Touch       *TouchInfo
+	AirWheel    *AirWheelInfo
+	Coordinates *CoordinateInfo
+}
+
+func NewGestureData() *gestureData {
+	return &gestureData{
+		Event:       &EventHeader{},
+		DataHeader:  &DataHeader{},
+		Gesture:     &GestureInfo{},
+		Touch:       &TouchInfo{},
+		AirWheel:    &AirWheelInfo{},
+		Coordinates: &CoordinateInfo{},
+	}
 }
 
 type EventHeader struct {
@@ -55,34 +63,26 @@ type DataHeader struct {
 }
 
 type GestureInfo struct {
-	Gesture uint32
+	GestureVal uint32
+}
+
+func (gi *GestureInfo) Name() string {
+	return Gestures[gi.GestureVal]
 }
 
 type TouchInfo struct {
-	Touch uint32
+	TouchVal uint32
 }
 
 type AirWheelInfo struct {
-	AirWheel uint8
-	Crap     uint8
+	AirWheelVal uint8
+	Crap        uint8
 }
 
 type CoordinateInfo struct {
 	X uint8
 	Y uint8
 	Z uint8
-}
-
-type GestureCoordinates struct {
-	X, Y, Z int
-}
-
-// decoded gesture
-type Gesture struct {
-	Gesture     *string
-	Touch       *string
-	AirWheel    *int
-	Coordinates *GestureCoordinates
 }
 
 var Gestures = []string{
@@ -96,14 +96,10 @@ var Gestures = []string{
 	"Circle counter-clockwise",
 }
 
-func (gi *GestureInfo) GetGestureName() string {
-	return Gestures[int(gi.Gesture)]
-}
-
 func (r *Reader) Start() {
 	log.Printf("Opening %s", GesticDevicePath)
 
-	r.currentGesture = &gestureData{}
+	r.currentGesture = NewGestureData()
 
 	if err := epoller.OpenAndDispatchEvents(GesticDevicePath, r.buildGestureEvent); err != nil {
 		log.Fatalf("Error opening device reader %v", err)
@@ -113,44 +109,42 @@ func (r *Reader) Start() {
 func (r *Reader) buildGestureEvent(buf []byte, n int) {
 
 	gopack.Unpack(buf[:4], r.currentGesture.Event)
-	gopack.Unpack(buf[4:8], r.currentGesture.Data)
+	gopack.Unpack(buf[4:8], r.currentGesture.DataHeader)
 
 	// var for offset
 	offset := 8
 
 	// grab the DSPIfo
-	if r.currentGesture.Data.DataMask&DSPIfoFlag == DSPIfoFlag {
+	if r.currentGesture.DataHeader.DataMask&DSPIfoFlag == DSPIfoFlag {
 		offset += 2
 	}
 
 	// grab the GestureInfo
-	if r.currentGesture.Data.DataMask&GestureInfoFlag == GestureInfoFlag {
+	if r.currentGesture.DataHeader.DataMask&GestureInfoFlag == GestureInfoFlag {
 
 		gopack.Unpack(buf[offset:offset+4], r.currentGesture.Gesture)
-		//		n := gestureInfo.Gesture & 0xff
-
+		r.currentGesture.Gesture.GestureVal = r.currentGesture.Gesture.GestureVal & uint32(0xff)
 		offset += 4
-
 	}
 
 	// grab the TouchInfo
-	if r.currentGesture.Data.DataMask&TouchInfoFlag == TouchInfoFlag {
+	if r.currentGesture.DataHeader.DataMask&TouchInfoFlag == TouchInfoFlag {
 		gopack.Unpack(buf[offset:offset+4], r.currentGesture.Touch)
 		offset += 4
 	}
 
 	// grab the AirWheelInfo
-	if r.currentGesture.Data.DataMask&AirWheelInfoFlag == AirWheelInfoFlag {
+	if r.currentGesture.DataHeader.DataMask&AirWheelInfoFlag == AirWheelInfoFlag {
 		gopack.Unpack(buf[offset:offset+2], r.currentGesture.AirWheel)
 		offset += 2
 	}
 
 	// grab the CoordinateInfo
-	if r.currentGesture.Data.DataMask&CoordinateInfoFlag == CoordinateInfoFlag {
+	if r.currentGesture.DataHeader.DataMask&CoordinateInfoFlag == CoordinateInfoFlag {
 		gopack.Unpack(buf[offset:offset+6], r.currentGesture.Coordinates)
 		offset += 6
 	}
 
-	log.Printf("%s", spew.Sdump(r.currentGesture))
+	log.Printf("Gesture: %s, Airwheel: %d, Touch: %d", r.currentGesture.Gesture.Name(), r.currentGesture.AirWheel.AirWheelVal, r.currentGesture.Touch.TouchVal)
 
 }
