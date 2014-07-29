@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-
 	"os"
+	"os/signal"
 
-	"github.com/mitchellh/cli"
+	"github.com/ninjasphere/driver-go-gestic/gestic"
+	"github.com/ninjasphere/go-ninja"
 )
 
 func main() {
@@ -13,32 +14,40 @@ func main() {
 }
 
 func realMain() int {
-	//log.SetOutput(ioutil.Discard)
 
-	// Get the command line args. We shortcut "--version" and "-v" to
-	// just show the version.
-	args := os.Args[1:]
-	for _, arg := range args {
-		if arg == "-v" || arg == "--version" {
-			newArgs := make([]string, len(args)+1)
-			newArgs[0] = "version"
-			copy(newArgs[1:], args)
-			args = newArgs
-			break
-		}
-	}
+	// configure the agent logger
+	logger := ninja.GetLogger("agent")
 
-	cli := &cli.CLI{
-		Args:     args,
-		Commands: Commands,
-		HelpFunc: cli.BasicHelpFunc("driver-go-gestic"),
-	}
+	// main logic here
+	conn, err := ninja.Connect("com.ninjablocks.gestic")
 
-	exitCode, err := cli.Run()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
+		logger.Errorf("Connect failed: %v", err)
 		return 1
 	}
 
-	return exitCode
+	pwd, err := os.Getwd()
+
+	if err != nil {
+		logger.Errorf("Connect failed: %v", err)
+		return 1
+	}
+
+	_, err = conn.AnnounceDriver("com.ninjablocks.gestic", "driver-gestic", pwd)
+	if err != nil {
+		logger.Errorf("Could not get driver bus: %v", err)
+		return 1
+	}
+
+	reader := gestic.NewReader(conn, logger)
+	go reader.Start()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+
+	// Block until a signal is received.
+	s := <-c
+	fmt.Println("Got signal:", s)
+
+	return 0
 }
