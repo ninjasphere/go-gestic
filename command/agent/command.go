@@ -17,9 +17,9 @@ type Command struct {
 	Ui         cli.Ui
 	ShutdownCh <-chan struct{}
 	args       []string
-	logger     loggo.Logger
+	logger     *ninja.Logger
 	debug      bool
-	agent      *Agent
+	reader     *Reader
 }
 
 func (c *Command) handleSignals(config *Config) int {
@@ -71,11 +71,7 @@ func (c *Command) Run(args []string) int {
 	}
 
 	// configure the agent logger
-	c.logger = loggo.GetLogger("agent")
-	if c.agent, err = CreateAgent(config); err != nil {
-		c.logger.Errorf("Unable to init agent : %v", err)
-		return 1
-	}
+	c.logger = ninja.GetLogger("agent")
 
 	// main logic here
 	conn, err := ninja.Connect("com.ninjablocks.gestic")
@@ -98,9 +94,8 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	reader := NewReader(conn)
-
-	go reader.Start()
+	c.reader = NewReader(conn, c.logger)
+	go c.reader.Start()
 
 	return c.handleSignals(config)
 }

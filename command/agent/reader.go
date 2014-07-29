@@ -33,12 +33,13 @@ const (
 )
 
 type Reader struct {
-	Conn           *ninja.NinjaConnection
+	conn           *ninja.NinjaConnection
+	log            *ninja.Logger
 	currentGesture *gestureData
 }
 
-func NewReader(conn *ninja.NinjaConnection) *Reader {
-	return &Reader{Conn: conn}
+func NewReader(conn *ninja.NinjaConnection, log *ninja.Logger) *Reader {
+	return &Reader{conn: conn, log: log}
 }
 
 type gestureData struct {
@@ -82,6 +83,14 @@ type TouchInfo struct {
 	TouchVal uint32
 }
 
+func (ti *TouchInfo) Name() string {
+	if ti.TouchVal > 0 {
+		i := math.Log(float64(ti.TouchVal)) / math.Log(2)
+		return TouchList[int(i)]
+	}
+	return "None"
+}
+
 type AirWheelInfo struct {
 	AirWheelVal uint8
 	Crap        uint8
@@ -123,7 +132,7 @@ var TouchList = []string{
 }
 
 func (r *Reader) Start() {
-	log.Printf("Opening %s", GesticDevicePath)
+	r.log.Infof("Opening %s", GesticDevicePath)
 
 	r.currentGesture = NewGestureData()
 
@@ -173,7 +182,7 @@ func (r *Reader) buildGestureEvent(buf []byte, n int) {
 		offset += 6
 	}
 
-	log.Printf("Gesture: %s, Airwheel: %d, Touch: %d", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.TouchVal)
+	r.log.Infof("Gesture: %s, Airwheel: %d, Touch: %s", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.Name())
 
 	r.publishCurrentGesture()
 }
@@ -185,20 +194,19 @@ func (r *Reader) publishCurrentGesture() {
 	if g.Gesture.GestureVal > 0 {
 		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
 		jsonmsg.Set("gesture", g.Gesture.Name())
-		r.Conn.PublishMessage("$client/gesture/gesture", jsonmsg)
+		r.conn.PublishMessage("$client/gesture/gesture", jsonmsg)
 	}
 
 	if g.Touch.TouchVal > 0 {
 		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
-		i := math.Log(float64(g.Touch.TouchVal)) / math.Log(2)
-		jsonmsg.Set("touch", TouchList[int(i)])
-		r.Conn.PublishMessage("$client/gesture/touch", jsonmsg)
+		jsonmsg.Set("touch", g.Touch.Name())
+		r.conn.PublishMessage("$client/gesture/touch", jsonmsg)
 	}
 
 	if g.AirWheel.AirWheelVal > 0 {
 		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
 		jsonmsg.Set("airwheel", g.AirWheel.AirWheelVal)
-		r.Conn.PublishMessage("$client/gesture/airwheel", jsonmsg)
+		r.conn.PublishMessage("$client/gesture/airwheel", jsonmsg)
 	}
 
 	if g.Coordinates.X != 0 || g.Coordinates.Y != 0 || g.Coordinates.Z != 0 {
@@ -206,6 +214,6 @@ func (r *Reader) publishCurrentGesture() {
 		jsonmsg.Set("x", g.Coordinates.X)
 		jsonmsg.Set("y", g.Coordinates.Y)
 		jsonmsg.Set("z", g.Coordinates.Z)
-		r.Conn.PublishMessage("$client/gesture/position", jsonmsg)
+		r.conn.PublishMessage("$client/gesture/position", jsonmsg)
 	}
 }
