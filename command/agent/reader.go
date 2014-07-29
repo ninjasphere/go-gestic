@@ -2,8 +2,11 @@ package agent
 
 import (
 	"log"
+	"math"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/joshlf13/gopack"
+	"github.com/ninjasphere/go-ninja"
 	"github.com/wolfeidau/epoller"
 )
 
@@ -30,7 +33,12 @@ const (
 )
 
 type Reader struct {
+	Conn           *ninja.NinjaConnection
 	currentGesture *gestureData
+}
+
+func NewReader(conn *ninja.NinjaConnection) *Reader {
+	return &Reader{Conn: conn}
 }
 
 type gestureData struct {
@@ -86,14 +94,32 @@ type CoordinateInfo struct {
 }
 
 var Gestures = []string{
-	"No gesture",
-	"Garbage model",
-	"Flick West to East",
-	"Flick East to West",
-	"Flick South to North",
-	"Flick North to South",
-	"Circle clockwise",
-	"Circle counter-clockwise",
+	"None",
+	"Garbage",
+	"WestToEast",
+	"EastToWest",
+	"SouthToNorth",
+	"NorthToSouth",
+	"CircleClockwise",
+	"CircleCounterClockwise",
+}
+
+var TouchList = []string{
+	"TouchSouth",
+	"TouchWest",
+	"TouchNorth",
+	"TouchEast",
+	"TouchCenter",
+	"TapSouth",
+	"TapWest",
+	"TapNorth",
+	"TapEast",
+	"TapCenter",
+	"DoubleTapSouth",
+	"DoubleTapWest",
+	"DoubleTapNorth",
+	"DoubleTapEast",
+	"DoubleTapCenter",
 }
 
 func (r *Reader) Start() {
@@ -108,43 +134,78 @@ func (r *Reader) Start() {
 
 func (r *Reader) buildGestureEvent(buf []byte, n int) {
 
-	gopack.Unpack(buf[:4], r.currentGesture.Event)
-	gopack.Unpack(buf[4:8], r.currentGesture.DataHeader)
+	g := r.currentGesture
+
+	gopack.Unpack(buf[:4], g.Event)
+	gopack.Unpack(buf[4:8], g.DataHeader)
 
 	// var for offset
 	offset := 8
 
 	// grab the DSPIfo
-	if r.currentGesture.DataHeader.DataMask&DSPIfoFlag == DSPIfoFlag {
+	if g.DataHeader.DataMask&DSPIfoFlag == DSPIfoFlag {
 		offset += 2
 	}
 
 	// grab the GestureInfo
-	if r.currentGesture.DataHeader.DataMask&GestureInfoFlag == GestureInfoFlag {
+	if g.DataHeader.DataMask&GestureInfoFlag == GestureInfoFlag {
 
-		gopack.Unpack(buf[offset:offset+4], r.currentGesture.Gesture)
-		r.currentGesture.Gesture.GestureVal = r.currentGesture.Gesture.GestureVal & uint32(0xff)
+		gopack.Unpack(buf[offset:offset+4], g.Gesture)
+		g.Gesture.GestureVal = g.Gesture.GestureVal & uint32(0xff)
 		offset += 4
 	}
 
 	// grab the TouchInfo
-	if r.currentGesture.DataHeader.DataMask&TouchInfoFlag == TouchInfoFlag {
-		gopack.Unpack(buf[offset:offset+4], r.currentGesture.Touch)
+	if g.DataHeader.DataMask&TouchInfoFlag == TouchInfoFlag {
+		gopack.Unpack(buf[offset:offset+4], g.Touch)
 		offset += 4
 	}
 
 	// grab the AirWheelInfo
-	if r.currentGesture.DataHeader.DataMask&AirWheelInfoFlag == AirWheelInfoFlag {
-		gopack.Unpack(buf[offset:offset+2], r.currentGesture.AirWheel)
+	if g.DataHeader.DataMask&AirWheelInfoFlag == AirWheelInfoFlag {
+		gopack.Unpack(buf[offset:offset+2], g.AirWheel)
 		offset += 2
 	}
 
 	// grab the CoordinateInfo
-	if r.currentGesture.DataHeader.DataMask&CoordinateInfoFlag == CoordinateInfoFlag {
-		gopack.Unpack(buf[offset:offset+6], r.currentGesture.Coordinates)
+	if g.DataHeader.DataMask&CoordinateInfoFlag == CoordinateInfoFlag {
+		gopack.Unpack(buf[offset:offset+6], g.Coordinates)
 		offset += 6
 	}
 
-	log.Printf("Gesture: %s, Airwheel: %d, Touch: %d", r.currentGesture.Gesture.Name(), r.currentGesture.AirWheel.AirWheelVal, r.currentGesture.Touch.TouchVal)
+	log.Printf("Gesture: %s, Airwheel: %d, Touch: %d", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.TouchVal)
 
+	r.publishCurrentGesture()
+}
+
+func (r *Reader) publishCurrentGesture() {
+
+	g := r.currentGesture
+
+	if g.Gesture.GestureVal > 0 {
+		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+		jsonmsg.Set("gesture", g.Gesture.Name())
+		r.Conn.PublishMessage("$client/gesture/gesture", jsonmsg)
+	}
+
+	if g.Touch.TouchVal > 0 {
+		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+		i := math.Log(float64(g.Touch.TouchVal)) / math.Log(2)
+		jsonmsg.Set("touch", TouchList[int(i)])
+		r.Conn.PublishMessage("$client/gesture/touch", jsonmsg)
+	}
+
+	if g.AirWheel.AirWheelVal > 0 {
+		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+		jsonmsg.Set("airwheel", g.AirWheel.AirWheelVal)
+		r.Conn.PublishMessage("$client/gesture/airwheel", jsonmsg)
+	}
+
+	if g.Coordinates.X != 0 || g.Coordinates.Y != 0 || g.Coordinates.Z != 0 {
+		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+		jsonmsg.Set("x", g.Coordinates.X)
+		jsonmsg.Set("y", g.Coordinates.Y)
+		jsonmsg.Set("z", g.Coordinates.Z)
+		r.Conn.PublishMessage("$client/gesture/position", jsonmsg)
+	}
 }

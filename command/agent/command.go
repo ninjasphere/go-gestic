@@ -92,13 +92,13 @@ func (c *Command) Run(args []string) int {
 		return 1
 	}
 
-	bus, err := conn.AnnounceDriver("com.ninjablocks.gestic", "driver-gestic", pwd)
+	_, err = conn.AnnounceDriver("com.ninjablocks.gestic", "driver-gestic", pwd)
 	if err != nil {
 		c.logger.Errorf("Could not get driver bus: %v", err)
 		return 1
 	}
 
-	reader := &Reader{}
+	reader := NewReader(conn)
 
 	go reader.Start()
 
