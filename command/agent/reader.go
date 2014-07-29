@@ -182,7 +182,7 @@ func (r *Reader) buildGestureEvent(buf []byte, n int) {
 		offset += 6
 	}
 
-	r.log.Infof("Gesture: %s, Airwheel: %d, Touch: %s", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.Name())
+	r.log.Debugf("Gesture: %s, Airwheel: %d, Touch: %s", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.Name())
 
 	r.publishCurrentGesture()
 }
