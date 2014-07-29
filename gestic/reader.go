@@ -7,6 +7,7 @@ import (
 	"github.com/bitly/go-simplejson"
 	"github.com/joshlf13/gopack"
 	"github.com/ninjasphere/go-ninja"
+	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/wolfeidau/epoller"
 )
 
@@ -34,11 +35,11 @@ const (
 
 type Reader struct {
 	conn           *ninja.NinjaConnection
-	log            *ninja.Logger
+	log            *logger.Logger
 	currentGesture *gestureData
 }
 
-func NewReader(conn *ninja.NinjaConnection, log *ninja.Logger) *Reader {
+func NewReader(conn *ninja.NinjaConnection, log *logger.Logger) *Reader {
 	return &Reader{conn: conn, log: log}
 }
 

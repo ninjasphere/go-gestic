@@ -7,6 +7,7 @@ import (
 
 	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja"
+	"github.com/ninjasphere/go-ninja/logger"
 )
 
 func main() {
@@ -16,30 +17,30 @@ func main() {
 func realMain() int {
 
 	// configure the agent logger
-	logger := ninja.GetLogger("agent")
+	log := logger.GetLogger("agent")
 
 	// main logic here
 	conn, err := ninja.Connect("com.ninjablocks.gestic")
 
 	if err != nil {
-		logger.Errorf("Connect failed: %v", err)
+		log.Errorf("Connect failed: %v", err)
 		return 1
 	}
 
 	pwd, err := os.Getwd()
 
 	if err != nil {
-		logger.Errorf("Connect failed: %v", err)
+		log.Errorf("Connect failed: %v", err)
 		return 1
 	}
 
 	_, err = conn.AnnounceDriver("com.ninjablocks.gestic", "driver-gestic", pwd)
 	if err != nil {
-		logger.Errorf("Could not get driver bus: %v", err)
+		log.Errorf("Could not get driver bus: %v", err)
 		return 1
 	}
 
-	reader := gestic.NewReader(conn, logger)
+	reader := gestic.NewReader(conn, log)
 	go reader.Start()
 
 	c := make(chan os.Signal, 1)
