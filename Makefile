@@ -1,13 +1,13 @@
 GOPATH=$(shell pwd)/.gopath
 
-all:
+debug:
 	scripts/build.sh
 
-dist:
-	scripts/dist.sh
+release:	
+	scripts/build.sh -release
 
 clean:
-	rm -f bin/mqtt-bridgeify || true
+	rm -f bin/driver-go-gestic || true
 	rm -rf .gopath || true
 
 test:
@@ -17,4 +17,4 @@ test:
 vet:
 	go vet ./...
 
-.PHONY: all	dist clean test
+.PHONY: debug release clean test

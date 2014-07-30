@@ -16,8 +16,12 @@ func main() {
 
 func realMain() int {
 
+	debug("DEBUG BUILD")
+
+	panic("Woops")
+
 	// configure the agent logger
-	log := logger.GetLogger("agent")
+	log := logger.GetLogger("driver-gestic")
 
 	// main logic here
 	conn, err := ninja.Connect("com.ninjablocks.gestic")

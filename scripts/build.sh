@@ -27,4 +27,8 @@ export GOPATH="$(pwd)/.gopath"
 # move the working path and build
 cd .gopath/src/github.com/${OWNER}/${PROJECT_NAME}
 go get -d -v ./...
-go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -o ./bin/${BIN_NAME}
+if [ "$1" = "-release" ]; then
+	go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -tags release -o ./bin/${BIN_NAME}
+else
+	go build -ldflags "-X main.GitCommit ${GIT_COMMIT}${GIT_DIRTY}" -o ./bin/${BIN_NAME}
+fi
