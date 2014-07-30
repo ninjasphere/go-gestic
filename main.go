@@ -18,8 +18,6 @@ func realMain() int {
 
 	debug("DEBUG BUILD")
 
-	panic("Woops")
-
 	// configure the agent logger
 	log := logger.GetLogger("driver-gestic")
 
