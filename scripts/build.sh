@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -ex
 
 OWNER=ninjasphere
 BIN_NAME=driver-go-gestic
@@ -23,6 +23,9 @@ fi
 
 
 export GOPATH="$(pwd)/.gopath"
+
+# Clone our internal commons package
+git clone git@github.com:ninjasphere/go-ninja.git $GOPATH/src/github.com/ninjasphere/go-ninja
 
 # move the working path and build
 cd .gopath/src/github.com/${OWNER}/${PROJECT_NAME}
