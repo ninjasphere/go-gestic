@@ -3,9 +3,6 @@ GOPATH=$(shell pwd)/.gopath
 debug:
 	scripts/build.sh
 
-release:	
-	scripts/build.sh -release
-
 clean:
 	rm -f bin/driver-go-gestic || true
 	rm -rf .gopath || true
