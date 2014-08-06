@@ -14,4 +14,4 @@ test:
 vet:
 	go vet ./...
 
-.PHONY: debug release clean test
+.PHONY: debug clean test vet
