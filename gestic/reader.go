@@ -98,9 +98,9 @@ type AirWheelInfo struct {
 }
 
 type CoordinateInfo struct {
-	X uint8
-	Y uint8
-	Z uint8
+	X uint16
+	Y uint16
+	Z uint16
 }
 
 var Gestures = []string{
