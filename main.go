@@ -42,6 +42,14 @@ func realMain() int {
 		return 1
 	}
 
+	statusJob, err := ninja.CreateStatusJob(conn, drivername)
+
+	if err != nil {
+		log.FatalErrorf(err, "Could not setup status job")
+	}
+
+	statusJob.Start()
+
 	reader := gestic.NewReader(conn, log)
 	go reader.Start()
 
