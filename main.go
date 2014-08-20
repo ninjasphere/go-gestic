@@ -10,6 +10,8 @@ import (
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
+const driverName = "driver-gestic"
+
 func main() {
 	os.Exit(realMain())
 }
@@ -19,7 +21,7 @@ func realMain() int {
 	debug("DEBUG BUILD")
 
 	// configure the agent logger
-	log := logger.GetLogger("driver-gestic")
+	log := logger.GetLogger(driverName)
 
 	// main logic here
 	conn, err := ninja.Connect("com.ninjablocks.gestic")
@@ -36,13 +38,13 @@ func realMain() int {
 		return 1
 	}
 
-	_, err = conn.AnnounceDriver("com.ninjablocks.gestic", "driver-gestic", pwd)
+	_, err = conn.AnnounceDriver("com.ninjablocks.gestic", driverName, pwd)
 	if err != nil {
 		log.Errorf("Could not get driver bus: %v", err)
 		return 1
 	}
 
-	statusJob, err := ninja.CreateStatusJob(conn, drivername)
+	statusJob, err := ninja.CreateStatusJob(conn, driverName)
 
 	if err != nil {
 		log.FatalErrorf(err, "Could not setup status job")
