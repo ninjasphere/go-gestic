@@ -77,7 +77,11 @@ type GestureInfo struct {
 }
 
 func (gi *GestureInfo) Name() string {
-	return Gestures[gi.GestureVal]
+	if int(gi.GestureVal) < len(Gestures) {
+		return Gestures[gi.GestureVal]
+	} else {
+		return Gestures[0]
+	}
 }
 
 type TouchInfo struct {

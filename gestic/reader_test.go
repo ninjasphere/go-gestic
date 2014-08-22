@@ -21,6 +21,7 @@ type ReaderSuite struct {
 	blankValue []byte
 	gestureVal []byte
 	reader     *Reader
+	gesture    *GestureInfo
 }
 
 var _ = Suite(&ReaderSuite{})
@@ -50,10 +51,11 @@ func (rs *ReaderSuite) SetUpTest(c *C) {
 		0x00, 0x00, // z
 	}
 
+	rs.gesture = &GestureInfo{}
 }
 
 func (rs *ReaderSuite) TestReadGesture(c *C) {
-	header := &Header{}
+	header := &EventHeader{}
 
 	gopack.Unpack(rs.blankValue[:4], header)
 
@@ -61,7 +63,7 @@ func (rs *ReaderSuite) TestReadGesture(c *C) {
 
 	c.Assert(header.Id, Equals, uint8(0x91))
 
-	dataHeader := &DateHeader{}
+	dataHeader := &DataHeader{}
 
 	gopack.Unpack(rs.blankValue[4:8], dataHeader)
 	log.Printf("T %+v", dataHeader)
@@ -79,7 +81,7 @@ func (rs *ReaderSuite) TestReadGesture(c *C) {
 }
 
 func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
-	header := &Header{}
+	header := &EventHeader{}
 
 	gopack.Unpack(rs.gestureVal[:4], header)
 
@@ -87,7 +89,7 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 
 	c.Assert(header.Id, Equals, uint8(0x91))
 
-	dataHeader := &DateHeader{}
+	dataHeader := &DataHeader{}
 
 	gopack.Unpack(rs.gestureVal[4:8], dataHeader)
 	log.Printf("dataHeader %+v", dataHeader)
@@ -100,25 +102,18 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 	offset := 8
 
 	// grab the DSPIfo
-	if dataHeader.DataMask&BIT_ONE == BIT_ONE {
-
-		dspinfo := &DSPInfo{}
-
-		gopack.Unpack(rs.gestureVal[offset:offset+2], dspinfo)
-
-		log.Printf("dspinfo %+v", dspinfo)
-
+	if dataHeader.DataMask&DSPIfoFlag == DSPIfoFlag {
 		offset += 2
 	}
 
 	// grab the GestureInfo
-	if dataHeader.DataMask&BIT_TWO == BIT_TWO {
+	if dataHeader.DataMask&GestureInfoFlag == GestureInfoFlag {
 
 		gestureInfo := &GestureInfo{}
 
 		gopack.Unpack(rs.gestureVal[offset:offset+4], gestureInfo)
 
-		log.Printf("gesture %d", gestureInfo.Gesture&0xff)
+		log.Printf("gesture %d", gestureInfo.GestureVal&0xff)
 
 		offset += 4
 
@@ -127,7 +122,7 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 	// SKIP 4 bytes
 
 	// grab the TouchInfo
-	if dataHeader.DataMask&BIT_FOUR == BIT_FOUR {
+	if dataHeader.DataMask&TouchInfoFlag == TouchInfoFlag {
 
 		touchInfo := &TouchInfo{}
 
@@ -139,7 +134,7 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 	}
 
 	// grab the AirWheelInfo
-	if dataHeader.DataMask&BIT_EIGHT == BIT_EIGHT {
+	if dataHeader.DataMask&AirWheelInfoFlag == AirWheelInfoFlag {
 
 		airWheelInfo := &AirWheelInfo{}
 
@@ -151,7 +146,7 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 	}
 
 	// grab the CoordinateInfo
-	if dataHeader.DataMask&BIT_SIXTEEN == BIT_SIXTEEN {
+	if dataHeader.DataMask&CoordinateInfoFlag == CoordinateInfoFlag {
 
 		coordinateInfo := &CoordinateInfo{}
 
@@ -166,4 +161,21 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 	c.Assert(dataHeader.DataMask&4, Equals, uint16(4))
 	c.Assert(dataHeader.DataMask&8, Equals, uint16(8))
 	c.Assert(dataHeader.DataMask&16, Equals, uint16(16))
+}
+
+func (rs *ReaderSuite) TestGestureInfoName(c *C) {
+	vals := []struct {
+		name  string
+		index uint32
+	}{
+		{
+			name:  "None",
+			index: 0,
+		},
+	}
+
+	for _, val := range vals {
+		c.Assert(val.name, Equals, Gestures[val.index])
+	}
+
 }
