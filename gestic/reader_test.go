@@ -165,17 +165,30 @@ func (rs *ReaderSuite) TestReadGestureTwo(c *C) {
 
 func (rs *ReaderSuite) TestGestureInfoName(c *C) {
 	vals := []struct {
-		name  string
-		index uint32
+		name    string
+		index   uint32
+		gesture *GestureInfo
 	}{
 		{
-			name:  "None",
-			index: 0,
+			name:    "None",
+			index:   0,
+			gesture: &GestureInfo{0},
+		},
+		{
+			name:    "None",
+			index:   0,
+			gesture: &GestureInfo{0},
+		},
+		{
+			name:    "CircleCounterClockwise",
+			index:   7,
+			gesture: &GestureInfo{7},
 		},
 	}
 
 	for _, val := range vals {
 		c.Assert(val.name, Equals, Gestures[val.index])
+		c.Assert(val.name, Equals, val.gesture.Name())
 	}
 
 }
