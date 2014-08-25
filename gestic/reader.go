@@ -201,18 +201,21 @@ func (r *Reader) publishCurrentGesture() {
 	if g.Gesture.GestureVal > 0 {
 		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
 		jsonmsg.Set("gesture", g.Gesture.Name())
+		jsonmsg.Set("seq", g.Event.Seq)
 		r.conn.PublishRPCMessage("$client/gesture/gesture", jsonmsg)
 	}
 
 	if g.Touch.TouchVal > 0 {
 		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
 		jsonmsg.Set("touch", g.Touch.Name())
+		jsonmsg.Set("seq", g.Event.Seq)
 		r.conn.PublishRPCMessage("$client/gesture/touch", jsonmsg)
 	}
 
 	if g.AirWheel.AirWheelVal > 0 {
 		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
 		jsonmsg.Set("airwheel", g.AirWheel.AirWheelVal)
+		jsonmsg.Set("seq", g.Event.Seq)
 		r.conn.PublishRPCMessage("$client/gesture/airwheel", jsonmsg)
 	}
 
@@ -221,6 +224,7 @@ func (r *Reader) publishCurrentGesture() {
 		jsonmsg.Set("x", g.Coordinates.X)
 		jsonmsg.Set("y", g.Coordinates.Y)
 		jsonmsg.Set("z", g.Coordinates.Z)
+		jsonmsg.Set("seq", g.Event.Seq)
 		r.conn.PublishRPCMessage("$client/gesture/position", jsonmsg)
 	}
 }
