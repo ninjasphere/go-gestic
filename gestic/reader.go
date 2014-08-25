@@ -89,9 +89,11 @@ type TouchInfo struct {
 }
 
 func (ti *TouchInfo) Name() string {
-	if int(ti.TouchVal) < len(TouchList) {
-		i := math.Log(float64(ti.TouchVal)) / math.Log(2)
-		return TouchList[int(i)]
+	if int(ti.TouchVal) > 0 {
+		i := int(math.Logb(float64(ti.TouchVal)))
+		if i < len(TouchList) {
+			return TouchList[i]
+		}
 	}
 	return "None"
 }
