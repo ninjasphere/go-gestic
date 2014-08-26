@@ -40,6 +40,27 @@ func realMain() int {
 
 	log.Infof("resetting gestic device")
 
+	err = writetofile("/sys/kernel/debug/omap_mux/mii1_rxdv", "2f")
+
+	if err != nil {
+		log.Errorf("Unable to reset gestic device: %v", err)
+		return 1
+	}
+
+	err = writetofile("/sys/class/gpio/export", "100")
+
+	if err != nil {
+		log.Errorf("Unable to reset gestic device: %v", err)
+		return 1
+	}
+
+	err = writetofile("/sys/class/gpio/gpio100/direction", "out")
+
+	if err != nil {
+		log.Errorf("Unable to reset gestic device: %v", err)
+		return 1
+	}
+
 	err = writetofile("/sys/class/gpio/gpio100/value", "0")
 
 	if err != nil {
