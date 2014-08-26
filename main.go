@@ -38,6 +38,22 @@ func realMain() int {
 		return 1
 	}
 
+	log.Infof("resetting gestic device")
+
+	err = writetofile("/sys/class/gpio/gpio100/value", "0")
+
+	if err != nil {
+		log.Errorf("Unable to reset gestic device: %v", err)
+		return 1
+	}
+
+	err = writetofile("/sys/class/gpio/gpio100/value", "1")
+
+	if err != nil {
+		log.Errorf("Unable to reset gestic device: %v", err)
+		return 1
+	}
+
 	_, err = conn.AnnounceDriver("com.ninjablocks.gestic", driverName, pwd)
 	if err != nil {
 		log.Errorf("Could not get driver bus: %v", err)
@@ -63,4 +79,21 @@ func realMain() int {
 	fmt.Println("Got signal:", s)
 
 	return 0
+}
+
+func writetofile(fn string, val string) error {
+
+	df, err := os.OpenFile(fn, os.O_WRONLY|os.O_SYNC, 0666)
+
+	if err != nil {
+		return err
+	}
+
+	defer df.Close()
+
+	if _, err = fmt.Fprintln(df, val); err != nil {
+		return err
+	}
+
+	return nil
 }
