@@ -50,8 +50,7 @@ func realMain() int {
 	err = writetofile("/sys/class/gpio/export", "100")
 
 	if err != nil {
-		log.Errorf("Unable to reset gestic device: %v", err)
-		return 1
+		log.Warningf("Unable to write to export pin: %v", err)
 	}
 
 	err = writetofile("/sys/class/gpio/gpio100/direction", "out")
