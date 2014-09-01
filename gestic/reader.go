@@ -4,9 +4,7 @@ import (
 	"log"
 	"math"
 
-	"github.com/bitly/go-simplejson"
 	"github.com/joshlf13/gopack"
-	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/wolfeidau/epoller"
 )
@@ -34,16 +32,16 @@ const (
 )
 
 type Reader struct {
-	conn           *ninja.NinjaConnection
+	onGesture      func(*GestureData)
 	log            *logger.Logger
-	currentGesture *gestureData
+	currentGesture *GestureData
 }
 
-func NewReader(conn *ninja.NinjaConnection, log *logger.Logger) *Reader {
-	return &Reader{conn: conn, log: log}
+func NewReader(log *logger.Logger, onGesture func(*GestureData)) *Reader {
+	return &Reader{onGesture: onGesture, log: log}
 }
 
-type gestureData struct {
+type GestureData struct {
 	Event       *EventHeader
 	DataHeader  *DataHeader
 	Gesture     *GestureInfo
@@ -52,8 +50,8 @@ type gestureData struct {
 	Coordinates *CoordinateInfo
 }
 
-func NewGestureData() *gestureData {
-	return &gestureData{
+func NewGestureData() *GestureData {
+	return &GestureData{
 		Event:       &EventHeader{},
 		DataHeader:  &DataHeader{},
 		Gesture:     &GestureInfo{},
@@ -191,40 +189,5 @@ func (r *Reader) buildGestureEvent(buf []byte, n int) {
 
 	r.log.Debugf("Gesture: %s, Airwheel: %d, Touch: %s", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.Name())
 
-	r.publishCurrentGesture()
-}
-
-func (r *Reader) publishCurrentGesture() {
-
-	g := r.currentGesture
-
-	if g.Gesture.GestureVal > 0 {
-		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
-		jsonmsg.Set("gesture", g.Gesture.Name())
-		jsonmsg.Set("seq", g.Event.Seq)
-		r.conn.PublishRPCMessage("$client/gesture/gesture", jsonmsg)
-	}
-
-	if g.Touch.TouchVal > 0 {
-		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
-		jsonmsg.Set("touch", g.Touch.Name())
-		jsonmsg.Set("seq", g.Event.Seq)
-		r.conn.PublishRPCMessage("$client/gesture/touch", jsonmsg)
-	}
-
-	if g.AirWheel.AirWheelVal > 0 {
-		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
-		jsonmsg.Set("airwheel", g.AirWheel.AirWheelVal)
-		jsonmsg.Set("seq", g.Event.Seq)
-		r.conn.PublishRPCMessage("$client/gesture/airwheel", jsonmsg)
-	}
-
-	if g.Coordinates.X != 0 || g.Coordinates.Y != 0 || g.Coordinates.Z != 0 {
-		jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
-		jsonmsg.Set("x", g.Coordinates.X)
-		jsonmsg.Set("y", g.Coordinates.Y)
-		jsonmsg.Set("z", g.Coordinates.Z)
-		jsonmsg.Set("seq", g.Event.Seq)
-		r.conn.PublishRPCMessage("$client/gesture/position", jsonmsg)
-	}
+	go r.onGesture(g)
 }

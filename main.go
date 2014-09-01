@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/bitly/go-simplejson"
 	"github.com/ninjasphere/driver-go-gestic/gestic"
 	"github.com/ninjasphere/go-ninja"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -38,39 +39,8 @@ func realMain() int {
 		return 1
 	}
 
-	log.Infof("resetting gestic device")
-
-	err = writetofile("/sys/kernel/debug/omap_mux/mii1_rxdv", "2f")
-
-	if err != nil {
-		log.Errorf("Unable to reset gestic device: %v", err)
-		return 1
-	}
-
-	err = writetofile("/sys/class/gpio/export", "100")
-
-	if err != nil {
-		log.Warningf("Unable to write to export pin: %v", err)
-	}
-
-	err = writetofile("/sys/class/gpio/gpio100/direction", "out")
-
-	if err != nil {
-		log.Errorf("Unable to reset gestic device: %v", err)
-		return 1
-	}
-
-	err = writetofile("/sys/class/gpio/gpio100/value", "0")
-
-	if err != nil {
-		log.Errorf("Unable to reset gestic device: %v", err)
-		return 1
-	}
-
-	err = writetofile("/sys/class/gpio/gpio100/value", "1")
-
-	if err != nil {
-		log.Errorf("Unable to reset gestic device: %v", err)
+	if err := gestic.ResetDevice(); err != nil {
+		log.Errorf(err)
 		return 1
 	}
 
@@ -88,7 +58,39 @@ func realMain() int {
 
 	statusJob.Start()
 
-	reader := gestic.NewReader(conn, log)
+	reader := gestic.NewReader(log, func(g *gestic.GesticData) {
+
+		if g.Gesture.GestureVal > 0 {
+			jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+			jsonmsg.Set("gesture", g.Gesture.Name())
+			jsonmsg.Set("seq", g.Event.Seq)
+			r.conn.PublishRPCMessage("$client/gesture/gesture", jsonmsg)
+		}
+
+		if g.Touch.TouchVal > 0 {
+			jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+			jsonmsg.Set("touch", g.Touch.Name())
+			jsonmsg.Set("seq", g.Event.Seq)
+			r.conn.PublishRPCMessage("$client/gesture/touch", jsonmsg)
+		}
+
+		if g.AirWheel.AirWheelVal > 0 {
+			jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+			jsonmsg.Set("airwheel", g.AirWheel.AirWheelVal)
+			jsonmsg.Set("seq", g.Event.Seq)
+			r.conn.PublishRPCMessage("$client/gesture/airwheel", jsonmsg)
+		}
+
+		if g.Coordinates.X != 0 || g.Coordinates.Y != 0 || g.Coordinates.Z != 0 {
+			jsonmsg, _ := simplejson.NewJson([]byte(`{}`))
+			jsonmsg.Set("x", g.Coordinates.X)
+			jsonmsg.Set("y", g.Coordinates.Y)
+			jsonmsg.Set("z", g.Coordinates.Z)
+			jsonmsg.Set("seq", g.Event.Seq)
+			r.conn.PublishRPCMessage("$client/gesture/position", jsonmsg)
+		}
+	})
+
 	go reader.Start()
 
 	c := make(chan os.Signal, 1)
