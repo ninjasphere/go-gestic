@@ -189,5 +189,8 @@ func (r *Reader) buildGestureEvent(buf []byte, n int) {
 
 	r.log.Debugf("Gesture: %s, Airwheel: %d, Touch: %s", g.Gesture.Name(), g.AirWheel.AirWheelVal, g.Touch.Name())
 
-	go r.onGesture(g)
+	// XXX: TODO: If we haven't read anything else... just ignore it for now as it's some other kind of message
+	if offset > 8 {
+		go r.onGesture(g)
+	}
 }
