@@ -32,13 +32,13 @@ const (
 )
 
 type Reader struct {
-	onGesture      func(*GestureData)
-	log            *logger.Logger
-	currentGesture *GestureData
+	onGesture  func(*GestureData)
+	log        *logger.Logger
+	currentSeq int
 }
 
 func NewReader(log *logger.Logger, onGesture func(*GestureData)) *Reader {
-	return &Reader{onGesture: onGesture, log: log}
+	return &Reader{onGesture: onGesture, log: log, currentSeq: -1}
 }
 
 type GestureData struct {
@@ -139,8 +139,6 @@ var TouchList = []string{
 func (r *Reader) Start() {
 	r.log.Infof("Opening %s", GesticDevicePath)
 
-	r.currentGesture = NewGestureData()
-
 	if err := epoller.OpenAndDispatchEvents(GesticDevicePath, r.buildGestureEvent); err != nil {
 		log.Fatalf("Error opening device reader %v", err)
 	}
@@ -148,13 +146,20 @@ func (r *Reader) Start() {
 
 func (r *Reader) buildGestureEvent(buf []byte, n int) {
 
-	g := r.currentGesture
+	g := NewGestureData()
 
 	gopack.Unpack(buf[:4], g.Event)
 	gopack.Unpack(buf[4:8], g.DataHeader)
 
 	// var for offset
 	offset := 8
+
+	// is this a duplicate event
+	if int(g.Event.Seq) == r.currentSeq {
+		return
+	}
+
+	r.currentSeq = int(g.Event.Seq)
 
 	// grab the DSPIfo
 	if g.DataHeader.DataMask&DSPIfoFlag == DSPIfoFlag {
