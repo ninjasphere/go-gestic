@@ -142,6 +142,18 @@ func (r *Reader) Start() {
 	if err := epoller.OpenAndDispatchEvents(GesticDevicePath, r.buildGestureEvent); err != nil {
 		log.Fatalf("Error opening device reader %v", err)
 	}
+
+}
+
+func (r *Reader) MaybeStart() error {
+	r.log.Infof("Opening %s", GesticDevicePath)
+
+	if err := epoller.OpenAndDispatchEvents(GesticDevicePath, r.buildGestureEvent); err != nil {
+		r.log.Warningf("Error opening device reader %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func (r *Reader) buildGestureEvent(buf []byte, n int) {
